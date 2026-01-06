@@ -11,13 +11,17 @@ const fs = require('fs');
 const { checkImageModeration } = require('./services/aiModeration');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'secret_key_123';
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, 'client')));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client', 'index.html'));
+});
+
 
 // Create upload dir
 if (!fs.existsSync('uploads')) {
@@ -667,3 +671,4 @@ app.get('/api/my-exchange-items', auth, async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+
