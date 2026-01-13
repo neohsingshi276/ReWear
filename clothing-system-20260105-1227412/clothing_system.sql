@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主机： 127.0.0.1
--- 生成日期： 2026-01-10 06:28:14
+-- 生成日期： 2026-01-09 17:01:33
 -- 服务器版本： 10.4.32-MariaDB
 -- PHP 版本： 8.2.12
 
@@ -82,6 +82,21 @@ CREATE TABLE `exchange_requests` (
 
 INSERT INTO `exchange_requests` (`id`, `requester_id`, `receiver_id`, `requester_product_id`, `receiver_product_id`, `status`, `requester_confirmed`, `receiver_confirmed`, `created_at`) VALUES
 (1, 5, 4, 24, 14, 'completed', 1, 1, '2026-01-09 11:51:06');
+
+-- --------------------------------------------------------
+
+--
+-- 表的结构 `password_reset_tokens`
+--
+
+CREATE TABLE `password_reset_tokens` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `token` varchar(255) NOT NULL,
+  `expires_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `used` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -206,6 +221,21 @@ INSERT INTO `users` (`id`, `username`, `email`, `password`, `avatar`, `credit_sc
 (5, 'test', 'test@test.com', '$2a$10$CuTXXemTpOAjivk1BiZPZ.xVsT7JxX9fXReUQZpbtFgJv.huGXMJC', NULL, 120, 142.50, '123321', '2026-01-08 17:04:55'),
 (6, 'admin', 'admin@test.com', '$2a$10$taZoYPAiACPPwQATg8z6uuUCB8ej0UragjM7QMEB3y/OJG1YP3kpu', NULL, 999, 0.00, NULL, '2026-01-09 14:31:13');
 
+-- --------------------------------------------------------
+
+--
+-- 表的结构 `withdrawal_requests`
+--
+
+CREATE TABLE `withdrawal_requests` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `bank_card` varchar(50) DEFAULT NULL,
+  `status` enum('pending','completed','rejected') DEFAULT 'pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- 转储表的索引
 --
@@ -236,6 +266,13 @@ ALTER TABLE `exchange_requests`
   ADD KEY `receiver_product_id` (`receiver_product_id`);
 
 --
+-- 表的索引 `password_reset_tokens`
+--
+ALTER TABLE `password_reset_tokens`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
 -- 表的索引 `products`
 --
 ALTER TABLE `products`
@@ -257,6 +294,13 @@ ALTER TABLE `transactions`
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`);
+
+--
+-- 表的索引 `withdrawal_requests`
+--
+ALTER TABLE `withdrawal_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`);
 
 --
 -- 在导出的表使用AUTO_INCREMENT
@@ -281,6 +325,12 @@ ALTER TABLE `exchange_requests`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
+-- 使用表AUTO_INCREMENT `password_reset_tokens`
+--
+ALTER TABLE `password_reset_tokens`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- 使用表AUTO_INCREMENT `products`
 --
 ALTER TABLE `products`
@@ -297,6 +347,12 @@ ALTER TABLE `transactions`
 --
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- 使用表AUTO_INCREMENT `withdrawal_requests`
+--
+ALTER TABLE `withdrawal_requests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- 限制导出的表
@@ -325,6 +381,12 @@ ALTER TABLE `exchange_requests`
   ADD CONSTRAINT `exchange_requests_ibfk_4` FOREIGN KEY (`receiver_product_id`) REFERENCES `products` (`id`);
 
 --
+-- 限制表 `password_reset_tokens`
+--
+ALTER TABLE `password_reset_tokens`
+  ADD CONSTRAINT `password_reset_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+--
 -- 限制表 `products`
 --
 ALTER TABLE `products`
@@ -337,6 +399,12 @@ ALTER TABLE `transactions`
   ADD CONSTRAINT `transactions_ibfk_1` FOREIGN KEY (`buyer_id`) REFERENCES `users` (`id`),
   ADD CONSTRAINT `transactions_ibfk_2` FOREIGN KEY (`seller_id`) REFERENCES `users` (`id`),
   ADD CONSTRAINT `transactions_ibfk_3` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`);
+
+--
+-- 限制表 `withdrawal_requests`
+--
+ALTER TABLE `withdrawal_requests`
+  ADD CONSTRAINT `withdrawal_requests_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
