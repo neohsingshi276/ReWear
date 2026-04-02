@@ -594,7 +594,7 @@ app.get('/api/exchange-products', auth, async (req, res) => {
       WHERE LOWER(p.status) = 'approved'
         AND (
           p.is_exchangeable = 1 OR p.is_exchangeable = TRUE OR p.is_exchangeable = '1'
-          OR LOWER(CAST(p.is_exchangeable AS CHAR)) = 'true'
+          OR LOWER(CAST(p.is_exchangeable AS TEXT)) = 'true'
         )
         AND (p.is_deleted IS NULL OR p.is_deleted = 0 OR p.is_deleted = FALSE)
         AND p.seller_id <> ?
@@ -620,7 +620,7 @@ app.get('/api/my-exchange-products', auth, async (req, res) => {
         AND LOWER(status) = 'approved'
         AND (
           is_exchangeable = 1 OR is_exchangeable = TRUE OR is_exchangeable = '1'
-          OR LOWER(CAST(is_exchangeable AS CHAR)) = 'true'
+          OR LOWER(CAST(is_exchangeable AS TEXT)) = 'true'
         )
         AND (is_deleted IS NULL OR is_deleted = 0 OR is_deleted = FALSE)
       ORDER BY created_at DESC
@@ -646,7 +646,7 @@ app.post('/api/exchange-requests', auth, async (req, res) => {
         AND (is_deleted IS NULL OR is_deleted = 0 OR is_deleted = FALSE)
         AND (
           is_exchangeable = 1 OR is_exchangeable = TRUE OR is_exchangeable = '1'
-          OR LOWER(CAST(is_exchangeable AS CHAR)) = 'true'
+          OR LOWER(CAST(is_exchangeable AS TEXT)) = 'true'
         )
         AND LOWER(status) = 'approved'
     `, [requester_product_id, req.user.id]);
@@ -659,7 +659,7 @@ app.post('/api/exchange-requests', auth, async (req, res) => {
         AND (is_deleted IS NULL OR is_deleted = 0 OR is_deleted = FALSE)
         AND (
           is_exchangeable = 1 OR is_exchangeable = TRUE OR is_exchangeable = '1'
-          OR LOWER(CAST(is_exchangeable AS CHAR)) = 'true'
+          OR LOWER(CAST(is_exchangeable AS TEXT)) = 'true'
         )
         AND LOWER(status) = 'approved'
     `, [receiver_product_id, receiver_id]);
