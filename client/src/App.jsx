@@ -8,7 +8,7 @@ import Profile from './pages/Profile';
 import ProductList from './pages/ProductList';
 import ProductUpload from './pages/ProductUpload';
 import Exchange from './pages/Exchange';
-import Admin from './pages/admin';
+import Admin from './pages/Admin';
 
 function App() {
   const location = useLocation();
