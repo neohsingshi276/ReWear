@@ -1104,9 +1104,12 @@ app.get('/api/my-exchange-items', auth, async (req, res) => {
 });
 
 // Serve built React frontend
-app.use(express.static(path.join(__dirname, 'client/dist')));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client/dist', 'index.html'));
-});
+const distPath = path.join(__dirname, 'client/dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
