@@ -12,8 +12,7 @@ const { checkImageModeration } = require('./services/aiModeration');
 
 const app = express();
 const PORT = 3000;
-require('dotenv').config();
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = 'secret_key_123';
 
 // Middleware
 app.use(cors());
@@ -36,7 +35,7 @@ const upload = multer({ storage });
 const auth = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
   if (!token) return res.sendStatus(401);
-
+  
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) return res.sendStatus(403);
     req.user = user;
@@ -69,10 +68,10 @@ app.put('/api/profile', auth, async (req, res) => {
         [email, req.user.id]
       );
 
-      if (exists.length > 0) {
-        return res.status(400).json({ error: 'Email already in use' });
-      }
+    if (exists.length > 0) {
+      return res.status(400).json({ error: 'Email already in use' });
     }
+  }
     const updates = [];
     const params = [];
 
@@ -127,7 +126,7 @@ app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
     const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
     if (users.length === 0) return res.status(400).json({ error: 'User not found' });
-
+    
     const user = users[0];
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ error: 'Invalid password' });
@@ -149,7 +148,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     await db.query('INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
       [users[0].id, token, new Date(Date.now() + 3600000)]);
-
+    
     // In production send email, demo returns token directly
     res.json({ message: 'Reset token generated', token });
   } catch (err) {
@@ -202,7 +201,7 @@ app.post('/api/password/send-code', async (req, res) => {
 
     // 4️⃣ 标记旧验证码为已使用（防止重复）
     await db.query(
-      'UPDATE password_reset_codes SET used = 1 WHERE user_id = ?',
+      'UPDATE password_reset_codes SET used = TRUE WHERE user_id = ?',
       [userId]
     );
 
@@ -255,7 +254,7 @@ app.post('/api/password/reset-with-code', async (req, res) => {
        FROM password_reset_codes
        WHERE user_id = ?
          AND code = ?
-         AND used = 0
+         AND used = FALSE
          AND expires_at > NOW()
        ORDER BY created_at DESC
        LIMIT 1`,
@@ -279,7 +278,7 @@ app.post('/api/password/reset-with-code', async (req, res) => {
 
     // 5️⃣ 标记验证码已使用
     await db.query(
-      'UPDATE password_reset_codes SET used = 1 WHERE id = ?',
+      'UPDATE password_reset_codes SET used = TRUE WHERE id = ?',
       [codeId]
     );
 
@@ -323,23 +322,23 @@ app.post('/api/products', auth, upload.single('image'), async (req, res) => {
       const localPath = path.join(__dirname, 'uploads', req.file.filename);
       console.log('[AI Check] Analyzing image...');
       console.log('[AI Check] File:', localPath);
-
+      
       try {
         const r = await checkImageModeration(localPath, brand || '');
-        aiResult = r.ai_check_result;
+aiResult = r.ai_check_result;
 
-        // ⭐ 核心规则：AI 不直接决定最终状态
-        if (r.status === 'approved') {
-          status = 'approved';
-        } else if (r.status === 'rejected') {
-          // 明确违规，才直接 rejected
-          status = 'rejected';
-        } else {
-          // ❗所有不确定情况 → 人工审核
-          status = 'pending';
-        }
+// ⭐ 核心规则：AI 不直接决定最终状态
+if (r.status === 'approved') {
+  status = 'approved';
+} else if (r.status === 'rejected') {
+  // 明确违规，才直接 rejected
+  status = 'rejected';
+} else {
+  // ❗所有不确定情况 → 人工审核
+  status = 'pending';
+}
 
-
+        
         console.log('[AI Check] Analysis done!');
         console.log('[AI Check] Decision:', r.decision);
         console.log('[AI Check] Status:', status);
@@ -362,11 +361,11 @@ app.post('/api/products', auth, upload.single('image'), async (req, res) => {
     console.log('[DB] Product saved, ID:', result.insertId);
     console.log('==========================================');
 
-    res.status(201).json({
+    res.status(201).json({ 
       message: status === 'approved' ? 'Approved and listed' : status === 'rejected' ? 'Review failed' : 'Submitted for review',
-      productId: result.insertId,
-      status,
-      aiResult
+      productId: result.insertId, 
+      status, 
+      aiResult 
     });
   } catch (err) {
     console.error('[Error]', err);
@@ -381,11 +380,11 @@ app.get('/api/products', async (req, res) => {
     let query = `SELECT p.*, u.username as seller_name FROM products p 
              JOIN users u ON p.seller_id = u.id 
              WHERE p.status = 'approved'
-               AND p.is_deleted = 0`;
+               AND p.is_deleted = FALSE`;
     const params = [];
 
     if (category) { query += ' AND p.category = ?'; params.push(category); }
-    if (search) {
+    if (search) { 
       query += ' AND (p.title LIKE ? OR p.description LIKE ? OR p.brand LIKE ?)';
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
@@ -405,7 +404,7 @@ app.get('/api/my-products', auth, async (req, res) => {
       SELECT *
       FROM products
       WHERE seller_id = ?
-        AND is_deleted = 0
+        AND is_deleted = FALSE
       ORDER BY created_at DESC
     `, [req.user.id]);
     res.json(products);
@@ -424,7 +423,7 @@ app.put('/api/products/:id', auth, async (req, res) => {
     const updates = [], params = [];
     if (price !== undefined) { updates.push('price = ?'); params.push(price); }
     if (is_exchangeable !== undefined) { updates.push('is_exchangeable = ?'); params.push(is_exchangeable); }
-
+    
     if (updates.length > 0) {
       params.push(req.params.id);
       await db.query(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`, params);
@@ -440,7 +439,7 @@ app.put('/api/products/:id/delist', auth, async (req, res) => {
   try {
     const [p] = await db.query('SELECT * FROM products WHERE id = ? AND seller_id = ?', [req.params.id, req.user.id]);
     if (p.length === 0) return res.status(403).json({ error: 'Not authorized' });
-    await db.query('UPDATE products SET status = "delisted" WHERE id = ?', [req.params.id]);
+    await db.query('UPDATE products SET status = 'delisted' WHERE id = ?', [req.params.id]);
     res.json({ message: 'Delisted' });
   } catch (err) {
     res.status(500).json({ error: 'Operation failed' });
@@ -452,7 +451,7 @@ app.put('/api/products/:id/relist', auth, async (req, res) => {
   try {
     const [p] = await db.query('SELECT * FROM products WHERE id = ? AND seller_id = ?', [req.params.id, req.user.id]);
     if (p.length === 0) return res.status(403).json({ error: 'Not authorized' });
-    await db.query('UPDATE products SET status = "approved" WHERE id = ?', [req.params.id]);
+    await db.query('UPDATE products SET status = 'approved' WHERE id = ?', [req.params.id]);
     res.json({ message: 'Listed' });
   } catch (err) {
     res.status(500).json({ error: 'Operation failed' });
@@ -476,7 +475,7 @@ app.delete('/api/products/:id', auth, async (req, res) => {
 
     // 软删除：标记 is_deleted
     await db.query(
-      'UPDATE products SET is_deleted = 1 WHERE id = ?',
+      'UPDATE products SET is_deleted = TRUE WHERE id = ?',
       [productId]
     );
 
@@ -495,7 +494,7 @@ app.get('/api/admin/pending-products', auth, adminOnly, async (req, res) => {
       FROM products p
       JOIN users u ON p.seller_id = u.id
       WHERE p.status = 'pending'
-        AND (p.is_deleted = 0 OR p.is_deleted IS NULL)
+        AND (p.is_deleted = FALSE OR p.is_deleted IS NULL)
       ORDER BY p.created_at ASC
     `);
     res.json(products);
@@ -508,7 +507,7 @@ app.get('/api/admin/pending-products', auth, adminOnly, async (req, res) => {
 app.put('/api/admin/products/:id/approve', auth, adminOnly, async (req, res) => {
   try {
     await db.query(
-      'UPDATE products SET status = "approved" WHERE id = ?',
+      'UPDATE products SET status = 'approved' WHERE id = ?',
       [req.params.id]
     );
     res.json({ message: 'Product approved' });
@@ -521,7 +520,7 @@ app.put('/api/admin/products/:id/approve', auth, adminOnly, async (req, res) => 
 app.put('/api/admin/products/:id/reject', auth, adminOnly, async (req, res) => {
   try {
     await db.query(
-      'UPDATE products SET status = "rejected" WHERE id = ?',
+      'UPDATE products SET status = 'rejected' WHERE id = ?',
       [req.params.id]
     );
     res.json({ message: 'Product rejected' });
@@ -594,9 +593,9 @@ app.get('/api/exchange-products', auth, async (req, res) => {
       WHERE LOWER(p.status) = 'approved'
         AND (
           p.is_exchangeable = 1 OR p.is_exchangeable = TRUE OR p.is_exchangeable = '1'
-          OR LOWER(CAST(p.is_exchangeable AS TEXT)) = 'true'
+          OR LOWER(CAST(p.is_exchangeable AS CHAR)) = 'true'
         )
-        AND (p.is_deleted IS NULL OR p.is_deleted = 0 OR p.is_deleted = FALSE)
+        AND (p.is_deleted IS NULL OR p.is_deleted = FALSE OR p.is_deleted = FALSE)
         AND p.seller_id <> ?
       ORDER BY p.created_at DESC
     `, [userId]);
@@ -622,7 +621,7 @@ app.get('/api/my-exchange-products', auth, async (req, res) => {
           is_exchangeable = 1 OR is_exchangeable = TRUE OR is_exchangeable = '1'
           OR LOWER(CAST(is_exchangeable AS TEXT)) = 'true'
         )
-        AND (is_deleted IS NULL OR is_deleted = 0 OR is_deleted = FALSE)
+        AND (is_deleted IS NULL OR is_deleted = FALSE OR is_deleted = FALSE)
       ORDER BY created_at DESC
     `, [userId]);
 
@@ -637,13 +636,13 @@ app.get('/api/my-exchange-products', auth, async (req, res) => {
 app.post('/api/exchange-requests', auth, async (req, res) => {
   try {
     const { receiver_id, requester_product_id, receiver_product_id } = req.body;
-
+    
     // Verify products
     const [my] = await db.query(`
       SELECT *
       FROM products
       WHERE id = ? AND seller_id = ?
-        AND (is_deleted IS NULL OR is_deleted = 0 OR is_deleted = FALSE)
+        AND (is_deleted IS NULL OR is_deleted = FALSE OR is_deleted = FALSE)
         AND (
           is_exchangeable = 1 OR is_exchangeable = TRUE OR is_exchangeable = '1'
           OR LOWER(CAST(is_exchangeable AS TEXT)) = 'true'
@@ -656,7 +655,7 @@ app.post('/api/exchange-requests', auth, async (req, res) => {
       SELECT *
       FROM products
       WHERE id = ? AND seller_id = ?
-        AND (is_deleted IS NULL OR is_deleted = 0 OR is_deleted = FALSE)
+        AND (is_deleted IS NULL OR is_deleted = FALSE OR is_deleted = FALSE)
         AND (
           is_exchangeable = 1 OR is_exchangeable = TRUE OR is_exchangeable = '1'
           OR LOWER(CAST(is_exchangeable AS TEXT)) = 'true'
@@ -715,7 +714,7 @@ app.put('/api/exchange-requests/:id/confirm', auth, async (req, res) => {
   try {
     const [reqs] = await db.query('SELECT * FROM exchange_requests WHERE id = ?', [req.params.id]);
     if (reqs.length === 0) return res.status(404).json({ error: 'Request not found' });
-
+    
     const r = reqs[0];
     if (r.status !== 'accepted') return res.status(400).json({ error: 'Please accept exchange first' });
 
@@ -730,8 +729,8 @@ app.put('/api/exchange-requests/:id/confirm', auth, async (req, res) => {
     // Check if both confirmed
     const [updated] = await db.query('SELECT * FROM exchange_requests WHERE id = ?', [req.params.id]);
     if (updated[0].requester_confirmed && updated[0].receiver_confirmed) {
-      await db.query('UPDATE exchange_requests SET status = "completed" WHERE id = ?', [req.params.id]);
-      await db.query('UPDATE products SET status = "sold" WHERE id IN (?, ?)', [r.requester_product_id, r.receiver_product_id]);
+      await db.query('UPDATE exchange_requests SET status = 'completed' WHERE id = ?', [req.params.id]);
+      await db.query('UPDATE products SET status = 'sold' WHERE id IN (?, ?)', [r.requester_product_id, r.receiver_product_id]);
       await db.query('UPDATE users SET credit_score = credit_score + 10 WHERE id IN (?, ?)', [r.requester_id, r.receiver_id]);
       res.json({ message: 'Exchange completed!', completed: true });
     } else {
@@ -780,7 +779,7 @@ app.post('/api/exchange-requests/:id/messages', auth, async (req, res) => {
 app.put('/api/admin/products/:id/approve', auth, adminOnly, async (req, res) => {
   try {
     await db.query(
-      'UPDATE products SET status = "approved" WHERE id = ?',
+      'UPDATE products SET status = 'approved' WHERE id = ?',
       [req.params.id]
     );
     res.json({ message: 'Product approved' });
@@ -793,7 +792,7 @@ app.put('/api/admin/products/:id/approve', auth, adminOnly, async (req, res) => 
 app.put('/api/admin/products/:id/reject', auth, adminOnly, async (req, res) => {
   try {
     await db.query(
-      'UPDATE products SET status = "rejected" WHERE id = ?',
+      'UPDATE products SET status = 'rejected' WHERE id = ?',
       [req.params.id]
     );
     res.json({ message: 'Product rejected' });
@@ -858,7 +857,7 @@ app.get('/api/admin/users/:id/details', auth, adminOnly, async (req, res) => {
 app.post('/api/payment/init', auth, async (req, res) => {
   try {
     const { product_id, payment_method } = req.body;
-    const [products] = await db.query('SELECT * FROM products WHERE id = ? AND status = "approved"', [product_id]);
+    const [products] = await db.query('SELECT * FROM products WHERE id = ? AND status = 'approved'', [product_id]);
     if (products.length === 0) return res.status(400).json({ success: false, error: 'Product not found' });
 
     const p = products[0];
@@ -867,7 +866,7 @@ app.post('/api/payment/init', auth, async (req, res) => {
     }
 
     const sessionToken = crypto.randomBytes(32).toString('hex');
-
+    
     // Store session
     global.paymentSessions = global.paymentSessions || {};
     global.paymentSessions[sessionToken] = {
@@ -892,7 +891,7 @@ app.post('/api/payment/process/:token', auth, async (req, res) => {
     if (session.buyerId !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
 
     const { card_number, phone, donation_percent } = req.body;
-
+    
     console.log('[Payment] Processing... Method:', session.paymentMethod);
     await new Promise(r => setTimeout(r, 1500)); // Simulate delay
 
@@ -934,11 +933,11 @@ app.post('/api/payment/confirm/:token', auth, async (req, res) => {
       [session.buyerId, session.sellerId, session.productId, session.amount, session.paymentMethod, session.cardLastFour, session.phone, 'held', donation]
     );
 
-    await db.query('UPDATE products SET status = "sold" WHERE id = ?', [session.productId]);
+    await db.query('UPDATE products SET status = 'sold' WHERE id = ?', [session.productId]);
     await db.query('INSERT INTO donation_history (user_id, amount, source) VALUES (?, ?, ?)', [session.buyerId, donation, 'transaction']);
 
     delete global.paymentSessions[req.params.token];
-
+    
     console.log('[Payment] Transaction complete, ID:', result.insertId);
     res.json({ success: true, transactionId: result.insertId, amount: session.amount, donationAmount: donation });
   } catch (err) {
@@ -967,7 +966,7 @@ app.put('/api/transactions/:id/ship', auth, async (req, res) => {
   try {
     const [txs] = await db.query('SELECT * FROM transactions WHERE id = ? AND seller_id = ?', [req.params.id, req.user.id]);
     if (txs.length === 0) return res.status(403).json({ error: 'Not authorized' });
-    await db.query('UPDATE transactions SET status = "shipped" WHERE id = ?', [req.params.id]);
+    await db.query('UPDATE transactions SET status = 'shipped' WHERE id = ?', [req.params.id]);
     res.json({ message: 'Shipped' });
   } catch (err) {
     res.status(500).json({ error: 'Operation failed' });
@@ -979,16 +978,16 @@ app.put('/api/transactions/:id/confirm', auth, async (req, res) => {
   try {
     const [txs] = await db.query('SELECT * FROM transactions WHERE id = ? AND buyer_id = ?', [req.params.id, req.user.id]);
     if (txs.length === 0) return res.status(403).json({ error: 'Not authorized' });
-
+    
     const tx = txs[0];
     if (tx.status === 'released') return res.status(400).json({ error: 'Completed' });
 
     // Transfer to seller
     const amount = parseFloat(tx.amount);
     await db.query('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, tx.seller_id]);
-    await db.query('UPDATE transactions SET status = "released" WHERE id = ?', [req.params.id]);
+    await db.query('UPDATE transactions SET status = 'released' WHERE id = ?', [req.params.id]);
     await db.query('UPDATE users SET credit_score = credit_score + 10 WHERE id = ?', [tx.seller_id]);
-
+    
     res.json({ message: 'Confirmed, funds released to seller' });
   } catch (err) {
     res.status(500).json({ error: 'Operation failed' });
@@ -1010,7 +1009,7 @@ app.get('/api/balance', auth, async (req, res) => {
 app.get('/api/my-billing-history', auth, async (req, res) => {
   try {
     const userId = req.user.id;
-
+    
     // 1. Transactions (Buying) - Money Out
     const [buying] = await db.query(`
       SELECT 'purchase' as type, -amount as amount, created_at, status, id, 'Purchase' as description 
@@ -1102,14 +1101,5 @@ app.get('/api/my-exchange-items', auth, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch' });
   }
 });
-
-// Serve built React frontend
-const distPath = path.join(__dirname, 'client/dist');
-if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
-}
 
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
